@@ -13,6 +13,7 @@ from notify_api.repository import (
     get_pending_retries,
     increment_delivery_attempt,
     list_active_channels,
+    list_all_channels,
     mark_notification_read,
     update_delivery_log_status,
 )
@@ -202,6 +203,12 @@ class DeliveryService:
                 retried.append(result)
         return retried
 
+    @staticmethod
+    def list_channels(session: Session, active_only: bool = False):
+        """List delivery channels, optionally filtering to active only."""
+        if active_only:
+            return list_active_channels(session)
+        return list_all_channels(session)
 
 # ---------------------------------------------------------------------------
 # Backward-compatible functional API (delegates to DeliveryService)

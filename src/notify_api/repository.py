@@ -1,8 +1,16 @@
 import uuid
+from datetime import datetime
 
 from sqlalchemy.orm import Session
 
-from notify_api.models import DeliveryChannel, DeliveryLog, Notification
+from notify_api.models import DeliveryChannel, DeliveryLog, DeliveryStatus, Notification
+
+
+def _to_uuid(value: uuid.UUID | str) -> uuid.UUID:
+    """Convert a string to UUID if needed."""
+    if isinstance(value, uuid.UUID):
+        return value
+    return uuid.UUID(value)
 
 
 def create_notification(session: Session, *, title: str, message: str, priority: str, role: str) -> Notification:
@@ -54,8 +62,8 @@ def create_channel(
     return channel
 
 
-def get_channel_by_id(session: Session, channel_id: uuid.UUID) -> DeliveryChannel | None:
-    return session.get(DeliveryChannel, channel_id)
+def get_channel_by_id(session: Session, channel_id: uuid.UUID | str) -> DeliveryChannel | None:
+    return session.get(DeliveryChannel, _to_uuid(channel_id))
 
 
 def list_active_channels(session: Session) -> list[DeliveryChannel]:
@@ -66,19 +74,14 @@ def list_active_channels(session: Session) -> list[DeliveryChannel]:
     )
 
 
-def deactivate_channel(session: Session, channel_id: uuid.UUID) -> DeliveryChannel | None:
-    channel = session.get(DeliveryChannel, channel_id)
+def deactivate_channel(session: Session, channel_id: uuid.UUID | str) -> DeliveryChannel | None:
+    channel = session.get(DeliveryChannel, _to_uuid(channel_id))
     if channel is None:
         return None
     channel.is_active = False
     session.commit()
     session.refresh(channel)
     return channel
-
-
-# ---------------------------------------------------------------------------
-# DeliveryLog CRUD
-# ---------------------------------------------------------------------------
 
 
 def create_delivery_log(
@@ -103,6 +106,28 @@ def create_delivery_log(
     return log
 
 
+def list_all_channels(session: Session) -> list[DeliveryChannel]:
+    return session.query(DeliveryChannel).all()
+
+
+def update_channel(
+    session: Session, channel_id: uuid.UUID | str, **kwargs
+) -> DeliveryChannel | None:
+    channel = session.get(DeliveryChannel, _to_uuid(channel_id))
+    if channel is None:
+        return None
+    for key, value in kwargs.items():
+        setattr(channel, key, value)
+    session.commit()
+    session.refresh(channel)
+    return channel
+
+
+# ---------------------------------------------------------------------------
+# DeliveryLog CRUD
+# ---------------------------------------------------------------------------
+
+
 def get_delivery_logs_by_notification(
     session: Session, notification_id: int
 ) -> list[DeliveryLog]:
@@ -111,3 +136,46 @@ def get_delivery_logs_by_notification(
         .filter(DeliveryLog.notification_id == notification_id)
         .all()
     )
+
+
+def get_delivery_log_by_id(session: Session, log_id: uuid.UUID | str) -> DeliveryLog | None:
+    return session.get(DeliveryLog, _to_uuid(log_id))
+
+
+def update_delivery_log_status(
+    session: Session,
+    log_id: uuid.UUID | str,
+    status: str,
+    error_message: str | None = None,
+) -> DeliveryLog | None:
+    log = session.get(DeliveryLog, _to_uuid(log_id))
+    if log is None:
+        return None
+    log.status = status
+    if error_message is not None:
+        log.error_message = error_message
+    session.commit()
+    session.refresh(log)
+    return log
+
+
+def get_pending_retries(session: Session) -> list[DeliveryLog]:
+    return (
+        session.query(DeliveryLog)
+        .filter(
+            DeliveryLog.status == DeliveryStatus.failed,
+            DeliveryLog.attempt_count < DeliveryLog.max_attempts,
+        )
+        .all()
+    )
+
+
+def increment_delivery_attempt(session: Session, log_id: uuid.UUID | str) -> DeliveryLog | None:
+    log = session.get(DeliveryLog, _to_uuid(log_id))
+    if log is None:
+        return None
+    log.attempt_count += 1
+    log.last_attempt_at = datetime.utcnow()
+    session.commit()
+    session.refresh(log)
+    return log

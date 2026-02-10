@@ -4,13 +4,22 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from notify_api.database import get_db
-from notify_api.schemas import NotificationCreate, NotificationResponse
+from notify_api.schemas import (
+    ChannelCreate,
+    ChannelResponse,
+    DeliveryStatusResponse,
+    NotificationCreate,
+    NotificationResponse,
+)
 from notify_api.service import (
     create_notification_service,
+    deliver_notification,
+    get_delivery_status,
     get_unread_notifications,
     mark_notification_read_service,
 )
 from notify_api.repository import (
+    create_channel,
     get_notification_by_id,
     list_notifications_by_role,
 )
@@ -55,3 +64,44 @@ def mark_read(notification_id: int, db: Session = Depends(get_db)):
     if notif is None:
         raise HTTPException(status_code=404, detail="Notification not found")
     return notif
+
+
+# ---------------------------------------------------------------------------
+# DeliveryChannel endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.post("/channels", response_model=ChannelResponse, status_code=201)
+def create_delivery_channel(payload: ChannelCreate, db: Session = Depends(get_db)):
+    channel = create_channel(
+        db,
+        name=payload.name,
+        channel_type=payload.channel_type,
+        config=payload.config,
+    )
+    return channel
+
+
+# ---------------------------------------------------------------------------
+# Delivery endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.post("/notifications/{notification_id}/deliver", status_code=202)
+def trigger_delivery(notification_id: int, db: Session = Depends(get_db)):
+    notif = get_notification_by_id(db, notification_id)
+    if notif is None:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    logs = deliver_notification(db, notification_id)
+    return {"notification_id": notification_id, "deliveries_created": len(logs)}
+
+
+@router.get(
+    "/notifications/{notification_id}/delivery-status",
+    response_model=DeliveryStatusResponse,
+)
+def delivery_status(notification_id: int, db: Session = Depends(get_db)):
+    result = get_delivery_status(db, notification_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    return result

@@ -1,5 +1,6 @@
+import uuid
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict
 
@@ -21,3 +22,48 @@ class NotificationResponse(BaseModel):
     role: str
     is_read: bool
     created_at: datetime
+
+
+# ---------------------------------------------------------------------------
+# DeliveryChannel
+# ---------------------------------------------------------------------------
+
+
+class ChannelCreate(BaseModel):
+    name: str
+    channel_type: str
+    config: dict[str, Any] = {}
+
+
+class ChannelResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+    channel_type: str
+    config: dict[str, Any] | None
+    is_active: bool
+    created_at: datetime
+
+
+# ---------------------------------------------------------------------------
+# Delivery
+# ---------------------------------------------------------------------------
+
+
+class DeliveryLogResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    log_id: str
+    channel_id: str
+    channel_name: str | None
+    channel_type: str | None
+    status: str
+    attempt_count: int
+    max_attempts: int
+
+
+class DeliveryStatusResponse(BaseModel):
+    notification_id: int
+    total_channels: int
+    deliveries: list[DeliveryLogResponse]

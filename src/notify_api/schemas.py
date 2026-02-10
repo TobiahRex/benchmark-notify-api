@@ -61,9 +61,14 @@ class DeliveryLogResponse(BaseModel):
     status: str
     attempt_count: int
     max_attempts: int
+    last_attempt_at: datetime | None = None
+    error_message: str | None = None
 
 
 class DeliveryStatusResponse(BaseModel):
     notification_id: int
     total_channels: int
+    delivered: int = 0
+    failed: int = 0
+    pending: int = 0
     deliveries: list[DeliveryLogResponse]

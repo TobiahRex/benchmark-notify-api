@@ -12,6 +12,7 @@ from notify_api.schemas import (
     NotificationResponse,
 )
 from notify_api.service import (
+    DeliveryService,
     create_notification_service,
     deliver_notification,
     get_delivery_status,
@@ -80,6 +81,14 @@ def create_delivery_channel(payload: ChannelCreate, db: Session = Depends(get_db
         config=payload.config,
     )
     return channel
+
+
+@router.get("/channels", response_model=list[ChannelResponse])
+def list_channels(
+    active_only: bool = Query(False),
+    db: Session = Depends(get_db),
+):
+    return DeliveryService.list_channels(db, active_only=active_only)
 
 
 # ---------------------------------------------------------------------------

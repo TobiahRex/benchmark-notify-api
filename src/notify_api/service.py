@@ -213,7 +213,6 @@ class DeliveryService:
             return list_active_channels(session)
         return list_all_channels(session)
 
-
 # ---------------------------------------------------------------------------
 # Backward-compatible functional API (delegates to DeliveryService)
 # ---------------------------------------------------------------------------

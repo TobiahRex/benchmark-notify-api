@@ -144,7 +144,8 @@ class DeliveryService:
     def get_status(session: Session, notification_id: int) -> dict | None:
         """Return aggregated delivery status for a notification.
 
-        Returns ``None`` if the notification does not exist.
+        Returns ``None`` if the notification does not exist.  Includes
+        per-channel details with ``last_attempt_at`` and ``error_message``.
         """
         notif = get_notification_by_id(session, notification_id)
         if notif is None:
@@ -178,6 +179,8 @@ class DeliveryService:
                     "status": status_val,
                     "attempt_count": log.attempt_count,
                     "max_attempts": log.max_attempts,
+                    "last_attempt_at": log.last_attempt_at,
+                    "error_message": log.error_message,
                 }
             )
         return {

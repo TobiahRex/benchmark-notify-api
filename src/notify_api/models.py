@@ -28,7 +28,7 @@ class Notification(Base):
     priority: Mapped[str] = mapped_column(String(20), default="normal")
     role: Mapped[str] = mapped_column(String(100), nullable=False)
     is_read: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
 
 
 class ChannelType(str, enum.Enum):
